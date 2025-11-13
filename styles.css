@@ -1,0 +1,251 @@
+body {
+  background-color: #f5f6f8;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.speedometer-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0 1.5rem;
+}
+
+.speedometer {
+  position: relative;
+  --size: min(340px, 70vw);
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #1f232b 0%, #0b0c10 65%, #050506 100%);
+  border: 12px solid #090b0f;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7),
+              0 18px 35px rgba(8, 11, 18, 0.55);
+}
+
+.speedometer-compact {
+  --size: min(260px, 60vw);
+}
+
+.speedometer::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+.speedometer-major-ticks span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: calc(var(--size) * 0.12);
+  background: linear-gradient(180deg, #ffffff, #adb5bd);
+  transform-origin: center bottom;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--size) * -0.44));
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.speedometer-scale span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #f1f3f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--size) * -0.33)) rotate(calc(-1 * var(--angle)));
+}
+
+.speedometer-needle {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  width: 8px;
+  height: 44%;
+  background: linear-gradient(180deg, #f03e3e 0%, #a4161a 70%, transparent 100%);
+  border-radius: 999px;
+  transform-origin: bottom center;
+  transform: translateX(-50%) rotate(-120deg);
+  transition: transform 0.15s ease-out;
+  box-shadow: 0 0 12px rgba(240, 62, 62, 0.45);
+}
+
+.speedometer-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #cfcfcf 50%, #444 100%);
+  border: 3px solid #050505;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+}
+
+.speedometer-inner-gauge {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: calc(var(--size) * 0.45);
+  height: calc(var(--size) * 0.45);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.15rem;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.06), transparent 70%),
+    repeating-conic-gradient(from -120deg, rgba(255, 255, 255, 0.08) 0deg 2deg, transparent 2deg 20deg);
+}
+
+.speedometer-inner-gauge::before {
+  content: "";
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.speedometer-value {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  color: #e9ecef;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.speedometer-value-number {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.speedometer-value-unit {
+  font-size: 0.85rem;
+  letter-spacing: 0.25rem;
+  text-transform: uppercase;
+  color: #adb5bd;
+}
+
+.speed-control {
+  padding: 0.75rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 0.85rem;
+  background: #f8f9fb;
+}
+
+.speed-step-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+.speed-target-display .display-value {
+  font-size: 1.4rem;
+}
+
+.speed-target-display .label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.05rem;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.form-label-compact {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  color: #6c757d;
+}
+
+.perturbation-row {
+  border: 1px solid #e4e7ec;
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+  background: #fff;
+}
+
+.perturbation-field {
+  width: 120px;
+}
+
+.simulation-speed {
+  min-width: 170px;
+}
+
+.controller-indicators {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.controller-light {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid #d9dee7;
+  background: radial-gradient(circle, #ffffff 0%, #dfe4ec 60%, #c5cfdf 100%);
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05rem;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.controller-light.active {
+  background: radial-gradient(circle, #e03131 0%, #a4161a 70%, #701010 100%);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(224, 49, 49, 0.6);
+}
+
+.log-panel {
+  max-height: 260px;
+  overflow-y: auto;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  white-space: pre;
+  background: #0c0d11;
+  color: #e9ecef;
+  border-radius: 6px;
+  padding: 0.75rem;
+  border: 1px solid #1f2430;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
+@media (max-width: 991px) {
+  .btn-group .btn {
+    font-size: 0.85rem;
+  }
+
+  .speedometer {
+    width: min(300px, 80vw);
+  }
+}
