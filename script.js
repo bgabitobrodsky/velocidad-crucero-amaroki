@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Parámetros de gráfico / ventana de tiempo
   const WINDOW_DURATION = 10; // segundos visibles
-  const chartUpdateInterval = 0.1; // segundos entre puntos
+  const chartUpdateInterval = 0.2; // segundos entre puntos
   let lastChartUpdateTime = 0;
 
   // Historial de muestras para últimos 10 s
@@ -66,18 +66,18 @@ document.addEventListener("DOMContentLoaded", function () {
     data: {
       datasets: [
         {
-          label: "Velocidad seteada (km/h)",
+          label: "Velocidad selec. (km/h)",
           data: [],
-          borderColor: "#6c757d",
-          backgroundColor: "rgba(108, 117, 125, 0.2)",
+          borderColor: "#434982ff",
+          backgroundColor: "rgba(73, 101, 126, 0.2)",
           borderWidth: 2,
           tension: 0.2
         },
         {
           label: "Velocidad real (km/h)",
           data: [],
-          borderColor: "#d63384",
-          backgroundColor: "rgba(214, 51, 132, 0.15)",
+          borderColor: "#d63356ff",
+          backgroundColor: "rgba(214, 51, 78, 0.15)",
           borderWidth: 2.5,
           tension: 0.25
         }

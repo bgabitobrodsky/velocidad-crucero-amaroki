@@ -41,7 +41,7 @@ body {
 .speedometer-major-ticks span {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 43%;
   width: 5px;
   height: calc(var(--size) * 0.12);
   background: linear-gradient(180deg, #ffffff, #adb5bd);
@@ -92,7 +92,7 @@ body {
 .speedometer-inner-gauge {
   position: absolute;
   left: 50%;
-  top: 62%;
+  top: 50%;
   width: calc(var(--size) * 0.45);
   height: calc(var(--size) * 0.45);
   border-radius: 50%;
