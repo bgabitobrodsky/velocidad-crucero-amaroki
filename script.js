@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // ---------------------------------------------------------------------------
   // Elementos DOM
+  // ---------------------------------------------------------------------------
   const setSpeedLabel = document.getElementById("setSpeedLabel");
   const increaseSpeedBtn = document.getElementById("increaseSpeed");
   const decreaseSpeedBtn = document.getElementById("decreaseSpeed");
@@ -8,8 +10,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const pertDurationSelect = document.getElementById("pertDuration");
   const applyPerturbationBtn = document.getElementById("applyPerturbation");
   const resetSimulationBtn = document.getElementById("resetSimulation");
-  const playBtn = document.getElementById("playBtn");
-  const pauseBtn = document.getElementById("pauseBtn");
+  const toggleSimulationBtn = document.getElementById("toggleSimulation");
+  const toggleSimulationIcon = document.getElementById("toggleSimulationIcon");
+  const toggleSimulationLabel = document.getElementById("toggleSimulationLabel");
   const simulationSpeedSelect = document.getElementById("simulationSpeed");
   const pertMagnitudeLabelEl = document.getElementById("pertMagnitudeLabel");
   const pertMagnitudeHintEl = document.getElementById("pertMagnitudeHint");
@@ -22,6 +25,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const statusErrorEl = document.getElementById("statusError");
   const statusControlEl = document.getElementById("statusControl");
   const statusPerturbationTorqueEl = document.getElementById("statusPerturbationTorque");
+  const testSuiteToggle = document.getElementById("testSuiteToggle");
+  const testSuitePanel = document.getElementById("testSuitePanel");
+  const testSuiteClose = document.getElementById("testSuiteClose");
+  const testCaseButtons = document.querySelectorAll(".test-case-btn");
 
   const currentSpeedLabel = document.getElementById("currentSpeedLabel");
   const timeLabel = document.getElementById("timeLabel");
@@ -32,7 +39,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const kpToggle = document.getElementById("kpToggle");
   const kiToggle = document.getElementById("kiToggle");
 
+  // ---------------------------------------------------------------------------
   // Estado de la simulación
+  // ---------------------------------------------------------------------------
   const MIN_TARGET_SPEED = 0;
   const MAX_TARGET_SPEED = 200;
   const SPEED_STEP = 5;
@@ -43,9 +52,11 @@ document.addEventListener("DOMContentLoaded", function () {
   let lastTimestamp = null;
   let simSpeedMultiplier = simulationSpeedSelect ? Number(simulationSpeedSelect.value) : 0.6;
 
+  // ---------------------------------------------------------------------------
   // Control PI
   // e(t) = r(t) - y(t)
   // u(t) = Kp*e(t) + Ki*integral(e(t)) (modelo PI del documento)
+  // ---------------------------------------------------------------------------
   const KP_GAIN = 0.85;
   const KI_GAIN = 0.35;
   const CONTROL_MIN = 0;
@@ -121,10 +132,14 @@ document.addEventListener("DOMContentLoaded", function () {
   let isProportionalEnabled = kpToggle ? kpToggle.checked : true;
   let isIntegralEnabled = kiToggle ? kiToggle.checked : true;
 
+  // ---------------------------------------------------------------------------
   // Estado perturbación
+  // ---------------------------------------------------------------------------
   let currentPerturbationLabel = "Sin pert.";
   let currentDisturbanceTorqueNm = 0;
   let disturbanceEndTime = 0; // tiempo simTime hasta el cual actúa
+  let testRunEndTime = null;
+  let testRunTotalDuration = null;
 
   // Estado de ejecución (play/pause)
   let isRunning = false;
@@ -138,7 +153,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Cada entrada: { t, setSpeed, actualSpeed, error, disturbance }
   let sampleHistory = [];
 
+  // ---------------------------------------------------------------------------
   // Gráfico (Chart.js) con eje X lineal (tiempo)
+  // ---------------------------------------------------------------------------
   const MIN_Y_SPAN = 10;
   const Y_EXTRA_RATIO = 0.1;
   const ctx = document.getElementById("simulationChart").getContext("2d");
@@ -206,7 +223,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   refreshIndicatorsFromState();
 
-  // Helpers
+  // ---------------------------------------------------------------------------
+  // Funciones auxiliares de UI y estado
+  // ---------------------------------------------------------------------------
   function updateSpeedometer() {
     const minAngle = -120;
     const maxAngle = 120;
@@ -232,6 +251,147 @@ document.addEventListener("DOMContentLoaded", function () {
     updateSetSpeedDisplay();
   }
 
+  function presetControlForSpeed(speed) {
+    const normalizedTorqueNeeded = clamp(
+      speed / CONTROL_TO_SPEED_GAIN,
+      CONTROL_MIN,
+      CONTROL_MAX
+    );
+    integralError = clamp(
+      normalizedTorqueNeeded / KI_GAIN,
+      -INTEGRAL_STATE_LIMIT,
+      INTEGRAL_STATE_LIMIT
+    );
+    lastIntegralTerm = KI_GAIN * integralError;
+    lastProportionalTerm = 0;
+    return normalizedTorqueNeeded;
+  }
+
+  function startSimulation() {
+    if (isRunning) return;
+    isRunning = true;
+    lastTimestamp = null;
+    updateSimulationToggleButton();
+    requestAnimationFrame(simulationStep);
+  }
+
+  function pauseSimulation() {
+    if (!isRunning) return;
+    isRunning = false;
+    updateSimulationToggleButton();
+  }
+
+  function updateSimulationToggleButton() {
+    if (!toggleSimulationBtn || !toggleSimulationIcon || !toggleSimulationLabel) return;
+    if (isRunning) {
+      toggleSimulationBtn.classList.remove("btn-success");
+      toggleSimulationBtn.classList.add("btn-warning");
+      toggleSimulationIcon.className = "bi bi-pause-fill";
+      toggleSimulationLabel.textContent = toggleSimulationBtn.dataset.pauseLabel || "Pausar";
+    } else {
+      toggleSimulationBtn.classList.remove("btn-warning");
+      toggleSimulationBtn.classList.add("btn-success");
+      toggleSimulationIcon.className = "bi bi-play-fill";
+      toggleSimulationLabel.textContent = toggleSimulationBtn.dataset.playLabel || "Iniciar";
+    }
+  }
+
+  function resetSimulationState() {
+    isRunning = false;
+    testRunEndTime = null;
+    testRunTotalDuration = null;
+    simTime = 0;
+    actualSpeed = 0;
+    currentDisturbanceTorqueNm = 0;
+    currentPerturbationLabel = "Sin pert.";
+    disturbanceEndTime = 0;
+    lastTimestamp = null;
+    lastChartUpdateTime = 0;
+
+    integralError = 0;
+    lastProportionalTerm = 0;
+    lastIntegralTerm = 0;
+    sampleHistory = [];
+    isProportionalEnabled = kpToggle ? kpToggle.checked : true;
+    isIntegralEnabled = kiToggle ? kiToggle.checked : true;
+
+    simulationChart.data.datasets.forEach(ds => {
+      ds.data = [];
+    });
+    simulationChart.options.scales.x.min = 0;
+    simulationChart.options.scales.x.max = WINDOW_DURATION;
+    simulationChart.options.scales.y.min = 0;
+    simulationChart.options.scales.y.max = MAX_TARGET_SPEED;
+    simulationChart.update();
+
+    currentSpeedLabel.textContent = "0";
+    timeLabel.textContent = "0.0";
+    logPanel.textContent = "";
+    updateSpeedometer();
+    refreshPerturbationInputs();
+    refreshIndicatorsFromState();
+    updateActivePerturbationPanel();
+    if (statusActualSpeedEl) statusActualSpeedEl.textContent = "0.0 km/h";
+    if (statusErrorEl) statusErrorEl.textContent = "0.0 km/h";
+    if (statusControlEl) statusControlEl.textContent = "0 %";
+    if (statusPerturbationTorqueEl) statusPerturbationTorqueEl.textContent = "0 Nm";
+    updateSimulationToggleButton();
+  }
+
+  function applyPerturbationFromCurrentInputs(customDurationSeconds) {
+    const preview = updatePerturbationPreview();
+    if (!preview) return null;
+    const { config, magnitude, torqueNm } = preview;
+    const durationValue = Number.isFinite(customDurationSeconds)
+      ? customDurationSeconds
+      : Number(pertDurationSelect.value);
+    currentDisturbanceTorqueNm = torqueNm;
+    disturbanceEndTime = simTime + (Number.isNaN(durationValue) ? 0 : durationValue);
+    if (Math.abs(torqueNm) < 0.5) {
+      currentPerturbationLabel = "Sin pert.";
+    } else {
+      currentPerturbationLabel = `${config.name} (${config.magnitudeFormatter(magnitude)})`;
+    }
+    updateActivePerturbationPanel();
+    return preview;
+  }
+
+  function runAutomatedTest(config) {
+    resetSimulationState();
+    if (typeof config.speed === "number") {
+      setSpeed = clamp(config.speed, MIN_TARGET_SPEED, MAX_TARGET_SPEED);
+      updateSetSpeedDisplay();
+    }
+    if (pertTypeSelect && config.pertType) {
+      pertTypeSelect.value = config.pertType;
+    }
+    refreshPerturbationInputs();
+    if (pertMagnitudeInput && typeof config.magnitude === "number") {
+      pertMagnitudeInput.value = config.magnitude.toString();
+    }
+    if (pertDurationSelect && typeof config.pertDuration === "number") {
+      pertDurationSelect.value = config.pertDuration.toString();
+    }
+
+    if (typeof config.initialActualSpeed === "number") {
+      actualSpeed = clamp(config.initialActualSpeed, MIN_TARGET_SPEED, MAX_TARGET_SPEED);
+    } else {
+      actualSpeed = setSpeed;
+    }
+    currentSpeedLabel.textContent = actualSpeed.toFixed(1);
+    updateSpeedometer();
+    const normalizedTorque = presetControlForSpeed(actualSpeed);
+    if (statusActualSpeedEl) statusActualSpeedEl.textContent = `${actualSpeed.toFixed(1)} km/h`;
+    if (statusErrorEl) statusErrorEl.textContent = `${(setSpeed - actualSpeed).toFixed(1)} km/h`;
+    if (statusControlEl) statusControlEl.textContent = `${(normalizedTorque * 100).toFixed(0)} %`;
+    if (statusPerturbationTorqueEl) statusPerturbationTorqueEl.textContent = formatTorqueNm(currentDisturbanceTorqueNm);
+
+    applyPerturbationFromCurrentInputs(config.pertDuration);
+    testRunEndTime = typeof config.simDuration === "number" ? config.simDuration : null;
+    testRunTotalDuration = testRunEndTime;
+    startSimulation();
+  }
+
   function setIndicatorState(element, isActive) {
     if (!element) return;
     element.classList.toggle("active", Boolean(isActive));
@@ -249,6 +409,9 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // PI + PERTURBATION SUPPORT
+  // ---------------------------------------------------------------------------
   function normalizeError(error) {
     return clamp(error / MAX_TARGET_SPEED, -2, 2);
   }
@@ -346,8 +509,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // Ventana fija de tiempo: últimos 10 s
     const minTime = Math.max(0, simTime - WINDOW_DURATION);
     const maxTime = Math.max(WINDOW_DURATION, simTime);
-    simulationChart.options.scales.x.min = minTime;
-    simulationChart.options.scales.x.max = maxTime;
+    if (testRunTotalDuration != null) {
+      simulationChart.options.scales.x.min = 0;
+      simulationChart.options.scales.x.max = testRunTotalDuration;
+    } else {
+      simulationChart.options.scales.x.min = minTime;
+      simulationChart.options.scales.x.max = maxTime;
+    }
 
     const yValues = [];
     sampleHistory.forEach(s => {
@@ -398,7 +566,9 @@ document.addEventListener("DOMContentLoaded", function () {
     logPanel.textContent = lines.join("\n");
   }
 
-  // Loop de simulación
+  // ---------------------------------------------------------------------------
+  // Loop de simulación principal
+  // ---------------------------------------------------------------------------
   function simulationStep(timestamp) {
     if (!isRunning) return;
 
@@ -410,6 +580,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const dt = (dtMs / 1000) * simSpeedMultiplier; // s escalados
 
     simTime += dt;
+
+    if (testRunEndTime != null && simTime >= testRunEndTime) {
+      testRunEndTime = null;
+      testRunTotalDuration = null;
+      pauseSimulation();
+    }
 
     // Apagar perturbación cuando pasa su duración
     if (simTime > disturbanceEndTime) {
@@ -498,9 +674,11 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       // Mantener sólo los últimos 30 s
-      while (sampleHistory.length > 0 &&
-             sampleHistory[0].t < simTime - WINDOW_DURATION) {
-        sampleHistory.shift();
+      if (testRunTotalDuration == null) {
+        while (sampleHistory.length > 0 &&
+               sampleHistory[0].t < simTime - WINDOW_DURATION) {
+          sampleHistory.shift();
+        }
       }
 
       // Actualizar gráfico y log
@@ -514,7 +692,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Listeners
+  // ---------------------------------------------------------------------------
+  // Event listeners y automatización
+  // ---------------------------------------------------------------------------
   if (kpToggle) {
     kpToggle.addEventListener("change", function () {
       isProportionalEnabled = kpToggle.checked;
@@ -564,6 +744,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   refreshPerturbationInputs();
   updateActivePerturbationPanel();
+  updateSimulationToggleButton();
 
   if (simulationSpeedSelect) {
     simulationSpeedSelect.addEventListener("change", function () {
@@ -575,82 +756,52 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   applyPerturbationBtn.addEventListener("click", function () {
-    const preview = updatePerturbationPreview();
-    if (!preview) return;
-    const { config, magnitude, torqueNm } = preview;
-    const duration = Number(pertDurationSelect.value);
-    currentDisturbanceTorqueNm = torqueNm;
-    disturbanceEndTime = simTime + (Number.isNaN(duration) ? 0 : duration);
-    if (Math.abs(torqueNm) < 0.5) {
-      currentPerturbationLabel = "Sin pert.";
-    } else {
-      currentPerturbationLabel = `${config.name} (${config.magnitudeFormatter(magnitude)})`;
-    }
-    updateActivePerturbationPanel();
+    applyPerturbationFromCurrentInputs();
   });
 
-  // Play
-  playBtn.addEventListener("click", function () {
-    if (!isRunning) {
-      isRunning = true;
-      lastTimestamp = null; // evitar salto en dt
-      playBtn.disabled = true;
-      pauseBtn.disabled = false;
-      requestAnimationFrame(simulationStep);
-    }
-  });
-
-  // Pause
-  pauseBtn.addEventListener("click", function () {
-    if (isRunning) {
-      isRunning = false;
-      playBtn.disabled = false;
-      pauseBtn.disabled = true;
-    }
-  });
+  if (toggleSimulationBtn) {
+    toggleSimulationBtn.addEventListener("click", function () {
+      if (isRunning) {
+        pauseSimulation();
+      } else {
+        startSimulation();
+      }
+    });
+  }
 
   // Reset
-  resetSimulationBtn.addEventListener("click", function () {
-    isRunning = false;
-    playBtn.disabled = false;
-    pauseBtn.disabled = true;
+  resetSimulationBtn.addEventListener("click", resetSimulationState);
 
-    simTime = 0;
-    actualSpeed = 0;
-    currentDisturbanceTorqueNm = 0;
-    currentPerturbationLabel = "Sin pert.";
-    disturbanceEndTime = 0;
-    lastTimestamp = null;
-    lastChartUpdateTime = 0;
-
-    integralError = 0;
-    lastProportionalTerm = 0;
-    lastIntegralTerm = 0;
-    sampleHistory = [];
-    isProportionalEnabled = kpToggle ? kpToggle.checked : true;
-    isIntegralEnabled = kiToggle ? kiToggle.checked : true;
-
-    // limpiar gráfico
-    simulationChart.data.datasets.forEach(ds => {
-      ds.data = [];
+  // --- Panel de pruebas rápidas
+  if (testSuiteToggle && testSuitePanel) {
+    testSuiteToggle.addEventListener("click", function () {
+      testSuitePanel.classList.toggle("d-none");
     });
-    simulationChart.options.scales.x.min = 0;
-    simulationChart.options.scales.x.max = WINDOW_DURATION;
-    simulationChart.update();
+  }
 
-    // limpiar UI
-    currentSpeedLabel.textContent = "0";
-    timeLabel.textContent = "0.0";
-    logPanel.textContent = "";
-    updateSpeedometer();
-    refreshPerturbationInputs();
-    refreshIndicatorsFromState();
-    updateActivePerturbationPanel();
-    if (statusActualSpeedEl) statusActualSpeedEl.textContent = "0.0 km/h";
-    if (statusErrorEl) statusErrorEl.textContent = "0.0 km/h";
-    if (statusControlEl) statusControlEl.textContent = "0 %";
-    if (statusPerturbationTorqueEl) statusPerturbationTorqueEl.textContent = "0 Nm";
-  });
+  if (testSuiteClose && testSuitePanel) {
+    testSuiteClose.addEventListener("click", function () {
+      testSuitePanel.classList.add("d-none");
+    });
+  }
+
+  if (testCaseButtons.length) {
+    testCaseButtons.forEach(btn => {
+      btn.addEventListener("click", function () {
+        if (testSuitePanel) {
+          testSuitePanel.classList.add("d-none");
+        }
+        runAutomatedTest({
+          speed: Number(btn.dataset.speed),
+          pertType: btn.dataset.pertType,
+          magnitude: Number(btn.dataset.magnitude),
+          pertDuration: Number(btn.dataset.pertDuration),
+          simDuration: Number(btn.dataset.simDuration),
+          initialActualSpeed: Number(btn.dataset.initialSpeed)
+        });
+      });
+    });
+  }
   // Al cargar: todo quieto
   updateSpeedometer();
 });

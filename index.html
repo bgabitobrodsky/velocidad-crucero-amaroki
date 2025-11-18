@@ -17,6 +17,70 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="dropdown position-fixed top-0 start-0 m-3" style="z-index: 1200;">
+    <button
+      class="btn btn-primary btn-sm dropdown-toggle"
+      type="button"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <i class="bi bi-bezier2 me-1"></i>
+      Pruebas rápidas
+    </button>
+    <div class="dropdown-menu p-0 shadow" style="min-width: 260px;">
+      <div class="p-3 border-bottom small text-uppercase text-muted">
+        Escenarios de análisis
+      </div>
+      <button
+        class="dropdown-item small test-case-btn py-2"
+        data-speed="80"
+        data-initial-speed="70"
+        data-pert-type="headwind"
+        data-magnitude="30"
+        data-pert-duration="10"
+        data-sim-duration="25"
+      >
+        <strong>80 km/h · Viento en contra 30 km/h</strong>
+        <div class="text-muted">10 s perturbación · 15 s recuperación</div>
+      </button>
+      <button
+        class="dropdown-item small test-case-btn py-2"
+        data-speed="90"
+        data-initial-speed="95"
+        data-pert-type="tailwind"
+        data-magnitude="20"
+        data-pert-duration="10"
+        data-sim-duration="20"
+      >
+        <strong>90 km/h · Viento a favor 20 km/h</strong>
+        <div class="text-muted">10 s impulso · 10 s estabilización</div>
+      </button>
+      <button
+        class="dropdown-item small test-case-btn py-2"
+        data-speed="70"
+        data-initial-speed="65"
+        data-pert-type="uphill"
+        data-magnitude="10"
+        data-pert-duration="10"
+        data-sim-duration="30"
+      >
+        <strong>70 km/h · Pendiente subida 10°</strong>
+        <div class="text-muted">10 s subida · 20 s respuesta PI</div>
+      </button>
+      <button
+        class="dropdown-item small test-case-btn py-2"
+        data-speed="110"
+        data-initial-speed="100"
+        data-pert-type="load"
+        data-magnitude="250"
+        data-pert-duration="10"
+        data-sim-duration="35"
+      >
+        <strong>110 km/h · Carga +250 kg</strong>
+        <div class="text-muted">10 s carga · 25 s recuperación</div>
+      </button>
+    </div>
+  </div>
   <div class="container py-4">
     <h1 class="mb-4 h3">Simulador de Control de Velocidad - Amarok</h1>
 
@@ -150,23 +214,15 @@
       <div class="col-lg-8 d-flex flex-column gap-3">
         <div class="card">
           <div class="card-body d-flex flex-wrap align-items-center gap-3">
-            <div class="btn-group" role="group">
-              <button
-                id="playBtn"
-                class="btn btn-success btn-sm d-flex align-items-center gap-1"
-              >
-                <i class="bi bi-play-fill"></i>
-                Iniciar
-              </button>
-              <button
-                id="pauseBtn"
-                class="btn btn-warning btn-sm d-flex align-items-center gap-1"
-                disabled
-              >
-                <i class="bi bi-pause-fill"></i>
-                Pausar
-              </button>
-            </div>
+            <button
+              id="toggleSimulation"
+              class="btn btn-success btn-sm d-flex align-items-center gap-1"
+              data-play-label="Iniciar"
+              data-pause-label="Pausar"
+            >
+              <i class="bi bi-play-fill" id="toggleSimulationIcon"></i>
+              <span id="toggleSimulationLabel">Iniciar</span>
+            </button>
             <button
               id="resetSimulation"
               class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"
