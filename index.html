@@ -38,46 +38,65 @@
         data-pert-type="headwind"
         data-magnitude="30"
         data-pert-duration="10"
+        data-pert-start="5"
         data-sim-duration="25"
       >
         <strong>80 km/h · Viento en contra 30 km/h</strong>
-        <div class="text-muted">10 s perturbación · 15 s recuperación</div>
+        <div class="text-muted">Inicio a los 5 s · 10 s perturbación · 15 s recuperación</div>
       </button>
       <button
         class="dropdown-item small test-case-btn py-2"
         data-speed="90"
         data-initial-speed="95"
         data-pert-type="tailwind"
-        data-magnitude="20"
-        data-pert-duration="10"
-        data-sim-duration="20"
+        data-magnitude="25"
+        data-pert-duration="8"
+        data-pert-start="4"
+        data-sim-duration="22"
       >
-        <strong>90 km/h · Viento a favor 20 km/h</strong>
-        <div class="text-muted">10 s impulso · 10 s estabilización</div>
+        <strong>90 km/h · Viento a favor 25 km/h</strong>
+        <div class="text-muted">Impulso corto a los 4 s · 8 s perturbación · 14 s ajuste</div>
       </button>
       <button
         class="dropdown-item small test-case-btn py-2"
         data-speed="70"
-        data-initial-speed="65"
+        data-initial-speed="75"
         data-pert-type="uphill"
-        data-magnitude="10"
-        data-pert-duration="10"
-        data-sim-duration="30"
+        data-magnitude="12"
+        data-pert-duration="12"
+        data-pert-start="6"
+        data-sim-duration="32"
       >
-        <strong>70 km/h · Pendiente subida 10°</strong>
-        <div class="text-muted">10 s subida · 20 s respuesta PI</div>
+        <strong>70 km/h · Pendiente subida 12°</strong>
+        <div class="text-muted">Subida a los 6 s · 12 s perturbación · 14 s respuesta PI</div>
       </button>
       <button
         class="dropdown-item small test-case-btn py-2"
         data-speed="110"
-        data-initial-speed="100"
+        data-initial-speed="105"
         data-pert-type="load"
-        data-magnitude="250"
+        data-magnitude="200"
         data-pert-duration="10"
+        data-pert-start="8"
         data-sim-duration="35"
       >
-        <strong>110 km/h · Carga +250 kg</strong>
-        <div class="text-muted">10 s carga · 25 s recuperación</div>
+        <strong>110 km/h · Carga +200 kg</strong>
+        <div class="text-muted">Carga extra a los 8 s · 10 s · 17 s recuperación</div>
+      </button>
+      <button
+        class="dropdown-item small test-case-btn py-2"
+        data-speed="85"
+        data-initial-speed="80"
+        data-pert-type="headwind"
+        data-magnitude="15"
+        data-pert-duration="10"
+        data-pert-start="5"
+        data-sim-duration="30"
+        data-speed-step-time="15"
+        data-speed-step-value="95"
+      >
+        <strong>Cambio de setpoint: 85 → 95 km/h</strong>
+        <div class="text-muted">Viento en contra 15 km/h a los 5 s · cambio de setpoint en el segundo 15</div>
       </button>
     </div>
   </div>

@@ -137,9 +137,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // ---------------------------------------------------------------------------
   let currentPerturbationLabel = "Sin pert.";
   let currentDisturbanceTorqueNm = 0;
+  let disturbanceStartTime = 0;
   let disturbanceEndTime = 0; // tiempo simTime hasta el cual actúa
   let testRunEndTime = null;
   let testRunTotalDuration = null;
+  let testRunSpeedStepTime = null;
+  let testRunSpeedStepValue = null;
 
   // Estado de ejecución (play/pause)
   let isRunning = false;
@@ -159,6 +162,22 @@ document.addEventListener("DOMContentLoaded", function () {
   const MIN_Y_SPAN = 10;
   const Y_EXTRA_RATIO = 0.1;
   const ctx = document.getElementById("simulationChart").getContext("2d");
+  const perturbationMarkerPlugin = {
+    id: "perturbationMarker",
+    afterDraw(chart) {
+      if (!chart.scales.x || disturbanceStartTime == null || disturbanceEndTime <= disturbanceStartTime) return;
+      const xScale = chart.scales.x;
+      const area = chart.chartArea;
+      const startPixel = xScale.getPixelForValue(Math.max(disturbanceStartTime, xScale.min));
+      const endPixel = xScale.getPixelForValue(Math.min(disturbanceEndTime, xScale.max));
+      if (startPixel >= endPixel) return;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.fillStyle = "rgba(255, 193, 7, 0.15)";
+      ctx.fillRect(startPixel, area.top, endPixel - startPixel, area.bottom - area.top);
+      ctx.restore();
+    }
+  };
   const simulationChart = new Chart(ctx, {
     type: "line",
     data: {
@@ -182,6 +201,17 @@ document.addEventListener("DOMContentLoaded", function () {
           tension: 0.25,
           pointRadius: 0,
           pointHoverRadius: 0
+        },
+        {
+          label: "Actuador (%)",
+          data: [],
+          borderColor: "#198754",
+          backgroundColor: "rgba(25, 135, 84, 0.15)",
+          borderWidth: 1.5,
+          tension: 0.15,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          yAxisID: "yAct"
         }
       ]
     },
@@ -206,6 +236,18 @@ document.addEventListener("DOMContentLoaded", function () {
           ticks: {
             callback: value => Number(value).toFixed(1)
           }
+        },
+        yAct: {
+          position: "right",
+          title: {
+            display: true,
+            text: "Actuador (%)"
+          },
+          min: 0,
+          max: 100,
+          grid: {
+            drawOnChartArea: false
+          }
         }
       },
       plugins: {
@@ -213,7 +255,8 @@ document.addEventListener("DOMContentLoaded", function () {
           position: "bottom"
         }
       }
-    }
+    },
+    plugins: [perturbationMarkerPlugin]
   });
 
   // Inicialización de labels
@@ -300,10 +343,13 @@ document.addEventListener("DOMContentLoaded", function () {
     isRunning = false;
     testRunEndTime = null;
     testRunTotalDuration = null;
+    testRunSpeedStepTime = null;
+    testRunSpeedStepValue = null;
     simTime = 0;
     actualSpeed = 0;
     currentDisturbanceTorqueNm = 0;
     currentPerturbationLabel = "Sin pert.";
+    disturbanceStartTime = 0;
     disturbanceEndTime = 0;
     lastTimestamp = null;
     lastChartUpdateTime = 0;
@@ -322,6 +368,8 @@ document.addEventListener("DOMContentLoaded", function () {
     simulationChart.options.scales.x.max = WINDOW_DURATION;
     simulationChart.options.scales.y.min = 0;
     simulationChart.options.scales.y.max = MAX_TARGET_SPEED;
+    simulationChart.options.scales.yAct.min = 0;
+    simulationChart.options.scales.yAct.max = 100;
     simulationChart.update();
 
     currentSpeedLabel.textContent = "0";
@@ -338,21 +386,24 @@ document.addEventListener("DOMContentLoaded", function () {
     updateSimulationToggleButton();
   }
 
-  function applyPerturbationFromCurrentInputs(customDurationSeconds) {
+  function applyPerturbationFromCurrentInputs(customDurationSeconds, customStartSeconds) {
     const preview = updatePerturbationPreview();
     if (!preview) return null;
     const { config, magnitude, torqueNm } = preview;
     const durationValue = Number.isFinite(customDurationSeconds)
       ? customDurationSeconds
       : Number(pertDurationSelect.value);
-    currentDisturbanceTorqueNm = torqueNm;
-    disturbanceEndTime = simTime + (Number.isNaN(durationValue) ? 0 : durationValue);
-    if (Math.abs(torqueNm) < 0.5) {
-      currentPerturbationLabel = "Sin pert.";
-    } else {
+    disturbanceStartTime = Number.isFinite(customStartSeconds) ? customStartSeconds : simTime;
+    disturbanceEndTime = disturbanceStartTime + (Number.isNaN(durationValue) ? 0 : durationValue);
+    if (disturbanceStartTime <= simTime) {
+      currentDisturbanceTorqueNm = torqueNm;
       currentPerturbationLabel = `${config.name} (${config.magnitudeFormatter(magnitude)})`;
+    } else {
+      currentDisturbanceTorqueNm = 0;
+      currentPerturbationLabel = "Perturbación programada";
     }
     updateActivePerturbationPanel();
+    preview.torqueNm = torqueNm;
     return preview;
   }
 
@@ -386,9 +437,16 @@ document.addEventListener("DOMContentLoaded", function () {
     if (statusControlEl) statusControlEl.textContent = `${(normalizedTorque * 100).toFixed(0)} %`;
     if (statusPerturbationTorqueEl) statusPerturbationTorqueEl.textContent = formatTorqueNm(currentDisturbanceTorqueNm);
 
-    applyPerturbationFromCurrentInputs(config.pertDuration);
+    const scheduledPert = applyPerturbationFromCurrentInputs(
+      config.pertDuration,
+      config.pertStart
+    );
     testRunEndTime = typeof config.simDuration === "number" ? config.simDuration : null;
     testRunTotalDuration = testRunEndTime;
+    testRunSpeedStepTime =
+      typeof config.speedStepTime === "number" ? config.speedStepTime : null;
+    testRunSpeedStepValue =
+      typeof config.speedStepValue === "number" ? config.speedStepValue : null;
     startSimulation();
   }
 
@@ -502,9 +560,11 @@ document.addEventListener("DOMContentLoaded", function () {
   function updateChartFromHistory() {
     const dsRef = simulationChart.data.datasets[0];
     const dsReal = simulationChart.data.datasets[1];
+    const dsAct = simulationChart.data.datasets[2];
 
     dsRef.data = sampleHistory.map(s => ({ x: s.t, y: s.setSpeed }));
     dsReal.data = sampleHistory.map(s => ({ x: s.t, y: s.actualSpeed }));
+    dsAct.data = sampleHistory.map(s => ({ x: s.t, y: s.throttlePercent ?? 0 }));
 
     // Ventana fija de tiempo: últimos 10 s
     const minTime = Math.max(0, simTime - WINDOW_DURATION);
@@ -581,9 +641,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     simTime += dt;
 
+  if (
+      testRunSpeedStepTime != null &&
+      simTime >= testRunSpeedStepTime &&
+      typeof testRunSpeedStepValue === "number"
+    ) {
+      testRunSpeedStepTime = null;
+      setSpeed = clamp(testRunSpeedStepValue, MIN_TARGET_SPEED, MAX_TARGET_SPEED);
+      updateSetSpeedDisplay();
+    }
+    if (
+      disturbanceStartTime != null &&
+      simTime >= disturbanceStartTime &&
+      simTime <= disturbanceEndTime &&
+      Math.abs(currentDisturbanceTorqueNm) < 0.5
+    ) {
+      const preview = updatePerturbationPreview();
+      if (preview) {
+        currentDisturbanceTorqueNm = preview.torqueNm ?? currentDisturbanceTorqueNm;
+        currentPerturbationLabel = `${preview.config.name} (${preview.config.magnitudeFormatter(
+          preview.magnitude
+        )})`;
+        updateActivePerturbationPanel();
+      }
+    }
     if (testRunEndTime != null && simTime >= testRunEndTime) {
       testRunEndTime = null;
       testRunTotalDuration = null;
+      testRunSpeedStepTime = null;
+      testRunSpeedStepValue = null;
       pauseSimulation();
     }
 
@@ -796,8 +882,11 @@ document.addEventListener("DOMContentLoaded", function () {
           pertType: btn.dataset.pertType,
           magnitude: Number(btn.dataset.magnitude),
           pertDuration: Number(btn.dataset.pertDuration),
+          pertStart: Number(btn.dataset.pertStart),
           simDuration: Number(btn.dataset.simDuration),
-          initialActualSpeed: Number(btn.dataset.initialSpeed)
+          initialActualSpeed: Number(btn.dataset.initialSpeed),
+          speedStepTime: Number(btn.dataset.speedStepTime),
+          speedStepValue: Number(btn.dataset.speedStepValue)
         });
       });
     });
