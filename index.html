@@ -23,8 +23,8 @@
     <div class="row g-3 align-items-start">
       <div class="col-lg-4 d-flex flex-column gap-3">
         <div class="card">
-          <div class="card-body">
-            <h2 class="h6 mb-3">Velocímetro</h2>
+          <div class="card-body d-flex flex-column gap-3">
+            <h2 class="h6 mb-0">Velocímetro</h2>
             <div class="speedometer-wrapper">
               <div class="speedometer speedometer-compact">
                 <div class="speedometer-major-ticks">
@@ -70,19 +70,12 @@
               Tiempo simulado:
               <strong id="timeLabel">0.0</strong> s
             </p>
-          </div>
-        </div>
-
-        <div class="card flex-fill">
-          <div class="card-body d-flex flex-column gap-3">
-            <h2 class="h5 mb-2">Parámetros y perturbaciones</h2>
-
             <div class="speed-control d-flex align-items-center gap-2">
               <button id="decreaseSpeed" class="btn btn-outline-secondary btn-sm speed-step-btn">
                 <i class="bi bi-dash-lg"></i>
               </button>
               <div class="speed-target-display flex-grow-1 text-center">
-                <span class="label text-uppercase small text-muted">Velocidad seteada</span>
+                <span class="label text-uppercase small text-muted">Velocidad seleccionada</span>
                 <div class="display-value">
                   <strong id="setSpeedLabel">80</strong> km/h
                 </div>
@@ -91,6 +84,12 @@
                 <i class="bi bi-plus-lg"></i>
               </button>
             </div>
+          </div>
+        </div>
+
+        <div class="card flex-fill">
+          <div class="card-body d-flex flex-column gap-3">
+            <h2 class="h5 mb-2">Configuración de perturbaciones</h2>
 
             <div class="perturbation-row d-flex flex-wrap gap-2 align-items-end">
               <div class="flex-grow-1 min-width-0">
@@ -103,17 +102,23 @@
                   <option value="load">Aumento de carga</option>
                 </select>
               </div>
-              <div class="perturbation-field">
-                <label for="pertMagnitude" class="form-label form-label-compact">Magnitud (km/h)</label>
-                <input
-                  type="number"
-                  id="pertMagnitude"
-                  class="form-control form-control-sm"
-                  min="0"
-                  max="40"
-                  step="2"
-                  value="10"
-                />
+              <div class="perturbation-field flex-grow-1 min-width-0">
+                <label for="pertMagnitude" class="form-label form-label-compact d-flex justify-content-between">
+                  <span id="pertMagnitudeLabel">Magnitud</span>
+                  <small class="text-muted" id="pertMagnitudeHint">Rango 0-60</small>
+                </label>
+                <div class="input-group input-group-sm">
+                  <input
+                    type="number"
+                    id="pertMagnitude"
+                    class="form-control form-control-sm"
+                    min="0"
+                    max="60"
+                    step="2"
+                    value="10"
+                  />
+                  <span class="input-group-text" id="pertUnitSuffix">km/h</span>
+                </div>
               </div>
               <div class="perturbation-field">
                 <label for="pertDuration" class="form-label form-label-compact">Duración (s)</label>
@@ -128,6 +133,14 @@
                 <button id="applyPerturbation" class="btn btn-primary btn-sm">
                   Aplicar
                 </button>
+              </div>
+            </div>
+            <div class="perturbation-feedback">
+              <div class="small text-muted" id="perturbationNotes">
+                Elige un tipo de perturbación para ver su equivalente en torque.
+              </div>
+              <div class="small fw-semibold mt-1">
+                Torque equivalente: <span id="pertTorquePreview">0 Nm</span>
               </div>
             </div>
           </div>
@@ -171,6 +184,17 @@
               </div>
             </div>
 
+            <div class="controller-switches d-flex flex-wrap align-items-center">
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="kpToggle" checked />
+                <label class="form-check-label" for="kpToggle">P activo</label>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="kiToggle" checked />
+                <label class="form-check-label" for="kiToggle">I activo</label>
+              </div>
+            </div>
+
             <div class="ms-auto simulation-speed">
               <label for="simulationSpeed" class="form-label form-label-compact mb-1">
                 Velocidad de simulación
@@ -185,10 +209,40 @@
           </div>
         </div>
 
+        <div
+          id="activePerturbationPanel"
+          class="alert alert-warning d-none small py-2 px-3 mb-0 d-flex justify-content-between align-items-center gap-2"
+        >
+          <span class="text-uppercase text-muted">Perturbación activa</span>
+          <span class="fw-semibold text-dark" id="activePerturbationSummary">Sin pert.</span>
+        </div>
+
         <div class="card flex-fill">
           <div class="card-body d-flex flex-column">
             <h2 class="h5 mb-3">Velocidades y log de la simulación</h2>
             <canvas id="simulationChart" height="260"></canvas>
+
+            <div class="mt-4">
+              <h3 class="h6 mb-2">Estado del sistema</h3>
+              <div class="row row-cols-2 row-cols-md-4 g-3 small text-uppercase text-muted">
+                <div class="col">
+                  <div>Vel. real</div>
+                  <div class="fw-semibold text-dark" id="statusActualSpeed">0.0 km/h</div>
+                </div>
+                <div class="col">
+                  <div>Error</div>
+                  <div class="fw-semibold text-dark" id="statusError">0.0 km/h</div>
+                </div>
+                <div class="col">
+                  <div>Control</div>
+                  <div class="fw-semibold text-dark" id="statusControl">0 %</div>
+                </div>
+                <div class="col">
+                  <div>Pert. torque</div>
+                  <div class="fw-semibold text-dark" id="statusPerturbationTorque">0 Nm</div>
+                </div>
+              </div>
+            </div>
 
             <div class="mt-4">
               <h3 class="h6 mb-2">Log detallado (del más reciente al más antiguo)</h3>

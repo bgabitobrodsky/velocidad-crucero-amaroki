@@ -201,6 +201,31 @@ body {
   gap: 0.35rem;
 }
 
+.controller-switches {
+  gap: 0.75rem;
+}
+
+.controller-switches .form-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0;
+}
+
+.controller-switches .form-check-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.controller-switches .form-check-input {
+  width: 2.4rem;
+  height: 1.2rem;
+  cursor: pointer;
+}
+
 .controller-light {
   width: 42px;
   height: 42px;
