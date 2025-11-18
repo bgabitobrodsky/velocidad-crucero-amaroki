@@ -152,7 +152,9 @@ document.addEventListener("DOMContentLoaded", function () {
           borderColor: "#434982ff",
           backgroundColor: "rgba(73, 101, 126, 0.2)",
           borderWidth: 2,
-          tension: 0.2
+          tension: 0.2,
+          pointRadius: 0,
+          pointHoverRadius: 0
         },
         {
           label: "Velocidad real (km/h)",
@@ -160,7 +162,9 @@ document.addEventListener("DOMContentLoaded", function () {
           borderColor: "#d63356ff",
           backgroundColor: "rgba(214, 51, 78, 0.15)",
           borderWidth: 2.5,
-          tension: 0.25
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 0
         }
       ]
     },
