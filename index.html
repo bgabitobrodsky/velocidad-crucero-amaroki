@@ -98,6 +98,17 @@
         <strong>Cambio de setpoint: 85 → 95 km/h</strong>
         <div class="text-muted">Viento en contra 15 km/h a los 5 s · cambio de setpoint en el segundo 15</div>
       </button>
+      <div class="border-top p-2">
+        <button
+          type="button"
+          class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
+          data-bs-toggle="modal"
+          data-bs-target="#customTestModal"
+        >
+          <i class="bi bi-sliders"></i>
+          Prueba custom
+        </button>
+      </div>
     </div>
   </div>
   <div class="container py-4">
@@ -326,6 +337,153 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div
+    class="modal fade"
+    id="customTestModal"
+    tabindex="-1"
+    aria-labelledby="customTestModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <form class="modal-content" id="customTestForm">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="customTestModalLabel">Prueba custom</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted">
+            Configura los mismos parámetros que usan las pruebas predefinidas y ejecuta un escenario personalizado.
+          </p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="customInitialSpeed" class="form-label">Velocidad inicial (km/h)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="customInitialSpeed"
+                name="customInitialSpeed"
+                min="0"
+                max="200"
+                step="1"
+                value="70"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="customTargetSpeed" class="form-label">Velocidad seleccionada (km/h)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="customTargetSpeed"
+                name="customTargetSpeed"
+                min="0"
+                max="200"
+                step="1"
+                value="80"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="customPertType" class="form-label">Tipo de perturbación</label>
+              <select id="customPertType" name="customPertType" class="form-select">
+                <option value="headwind">Viento en contra</option>
+                <option value="tailwind">Viento a favor</option>
+                <option value="uphill">Pendiente en subida</option>
+                <option value="downhill">Pendiente en bajada</option>
+                <option value="load">Aumento de carga</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="customPertMagnitude" class="form-label">Magnitud perturbación</label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  class="form-control"
+                  id="customPertMagnitude"
+                  name="customPertMagnitude"
+                  step="1"
+                  min="0"
+                  value="15"
+                />
+                <span class="input-group-text">Valor según tipo</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label for="customPertStart" class="form-label">Inicio perturbación (s)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="customPertStart"
+                name="customPertStart"
+                min="0"
+                step="0.5"
+                value="5"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="customPertDuration" class="form-label">Duración perturbación (s)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="customPertDuration"
+                name="customPertDuration"
+                min="0"
+                step="0.5"
+                value="10"
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="customSimulationDuration" class="form-label">Duración simulación total (s)</label>
+              <input
+                type="number"
+                class="form-control"
+                id="customSimulationDuration"
+                name="customSimulationDuration"
+                min="0"
+                step="1"
+                value="30"
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Cambio de velocidad seleccionada (opcional)</label>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="customSpeedStepTime"
+                    name="customSpeedStepTime"
+                    min="0"
+                    step="0.5"
+                    placeholder="Tiempo (s)"
+                  />
+                </div>
+                <div class="col-6">
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="customSpeedStepValue"
+                    name="customSpeedStepValue"
+                    min="0"
+                    max="200"
+                    step="1"
+                    placeholder="Nuevo velocidad"
+                  />
+                </div>
+              </div>
+              <small class="text-muted">Deja ambos campos vacíos para omitir este evento.</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-play-fill me-1"></i>
+            Ejecutar prueba
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

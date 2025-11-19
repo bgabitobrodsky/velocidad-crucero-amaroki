@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const testSuitePanel = document.getElementById("testSuitePanel");
   const testSuiteClose = document.getElementById("testSuiteClose");
   const testCaseButtons = document.querySelectorAll(".test-case-btn");
+  const customTestForm = document.getElementById("customTestForm");
+  const customTestModalEl = document.getElementById("customTestModal");
 
   const currentSpeedLabel = document.getElementById("currentSpeedLabel");
   const timeLabel = document.getElementById("timeLabel");
@@ -495,6 +497,14 @@ document.addEventListener("DOMContentLoaded", function () {
     return `${sign}${value.toFixed(0)} Nm`;
   }
 
+  function parseOptionalNumber(value) {
+    if (value === null || value === "") {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
   function refreshPerturbationInputs() {
     if (!pertMagnitudeInput) return;
     const config = getPerturbationConfig();
@@ -889,6 +899,37 @@ document.addEventListener("DOMContentLoaded", function () {
           speedStepValue: Number(btn.dataset.speedStepValue)
         });
       });
+    });
+  }
+
+  if (customTestForm) {
+    customTestForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const formData = new FormData(customTestForm);
+      const getNumber = name => parseOptionalNumber(formData.get(name));
+      const pertTypeValue = formData.get("customPertType");
+      const config = {
+        speed: getNumber("customTargetSpeed"),
+        initialActualSpeed: getNumber("customInitialSpeed"),
+        pertType: pertTypeValue && typeof pertTypeValue === "string" ? pertTypeValue : undefined,
+        magnitude: getNumber("customPertMagnitude"),
+        pertDuration: getNumber("customPertDuration"),
+        pertStart: getNumber("customPertStart"),
+        simDuration: getNumber("customSimulationDuration")
+      };
+      const speedStepTime = getNumber("customSpeedStepTime");
+      const speedStepValue = getNumber("customSpeedStepValue");
+      if (speedStepTime !== undefined && speedStepValue !== undefined) {
+        config.speedStepTime = speedStepTime;
+        config.speedStepValue = speedStepValue;
+      }
+      runAutomatedTest(config);
+      if (typeof bootstrap !== "undefined" && customTestModalEl) {
+        const modalInstance =
+          bootstrap.Modal.getInstance(customTestModalEl) ||
+          new bootstrap.Modal(customTestModalEl);
+        modalInstance.hide();
+      }
     });
   }
   // Al cargar: todo quieto
