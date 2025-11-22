@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
       unit: "°",
       magnitudeLabel: "Ángulo",
       min: 0,
-      max: 12,
+      max: 20,
       step: 0.5,
       magnitudeFormatter: value => `${value.toFixed(1)}°`,
       computeTorque: value => -GRADE_TORQUE_GAIN * Math.sin((value * Math.PI) / 180)
@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
       unit: "°",
       magnitudeLabel: "Ángulo",
       min: 0,
-      max: 12,
+      max: 20,
       step: 0.5,
       magnitudeFormatter: value => `${value.toFixed(1)}°`,
       computeTorque: value => GRADE_TORQUE_GAIN * Math.sin((value * Math.PI) / 180)
@@ -635,6 +635,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     logPanel.textContent = lines.join("\n");
   }
+
 
   // ---------------------------------------------------------------------------
   // Loop de simulación principal
