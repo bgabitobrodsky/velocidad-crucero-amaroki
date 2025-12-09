@@ -59,21 +59,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // e(t) = r(t) - y(t)
   // u(t) = Kp*e(t) + Ki*integral(e(t)) (modelo PI del documento)
   // ---------------------------------------------------------------------------
-  const KP_GAIN = 0.85;
-  const KI_GAIN = 0.35;
-  const CONTROL_MIN = 0;
-  const CONTROL_MAX = 1;
-  const CONTROL_TO_SPEED_GAIN = MAX_TARGET_SPEED;
-  const PLANT_TIME_CONSTANT = 1.6;
-  const INTEGRAL_STATE_LIMIT = 3;
-  const MAX_ENGINE_TORQUE = 580; // Nm
-  const NORMALIZED_MIN_TORQUE = -0.4;
-  const NORMALIZED_MAX_TORQUE = 1.3;
-  const WIND_TORQUE_COEFF = 0.04; // Nm por (km/h)^2 aprox
-  const GRADE_TORQUE_GAIN = MAX_ENGINE_TORQUE;
-  const LOAD_TORQUE_PER_KG = 0.22;
-  const KP_ACTIVITY_THRESHOLD = 0.02;
-  const KI_ACTIVITY_THRESHOLD = 0.02;
+  const KP_GAIN = 0.85; // Ganancia proporcional del PI (respuesta al error instantáneo)
+  const KI_GAIN = 0.35; // Ganancia integral del PI (respuesta al error acumulado)
+  const CONTROL_MIN = 0; // Saturación inferior de la señal de control normalizada
+  const CONTROL_MAX = 1; // Saturación superior de la señal de control normalizada
+  const CONTROL_TO_SPEED_GAIN = MAX_TARGET_SPEED; // Factor que traduce control-velocidad equivalente
+  const PLANT_TIME_CONSTANT = 1.6; // Constante de tiempo (s) de la dinámica de la planta (primer orden)
+  const INTEGRAL_STATE_LIMIT = 3; // Límite del integrador para evitar windup
+  const MAX_ENGINE_TORQUE = 580; // Nm; torque máximo disponible del motor
+  const NORMALIZED_MIN_TORQUE = -0.4; // Límite inferior de torque normalizado (algo de frenado)
+  const NORMALIZED_MAX_TORQUE = 1.3; // Límite superior de torque normalizado (sobrepar permisible)
+  const WIND_TORQUE_COEFF = 0.04; // Nm por (km/h)^2; resistencia/ayuda aerodinámica
+  const GRADE_TORQUE_GAIN = MAX_ENGINE_TORQUE; // Factor para convertir pendiente en torque equivalente
+  const LOAD_TORQUE_PER_KG = 0.22; // Nm que resta cada kg de carga extra
+  const KP_ACTIVITY_THRESHOLD = 0.02; // Umbral para mostrar actividad del término proporcional
+  const KI_ACTIVITY_THRESHOLD = 0.02; // Umbral para mostrar actividad del término integral
 
   const PERTURBATION_MODELS = {
     headwind: {
