@@ -2,6 +2,8 @@
 
 Simulador en el navegador para estudiar un controlador PI de velocidad crucero ante perturbaciones (viento, pendientes, carga) y cambios de referencia. Incluye velocimetro analogico, graficas en tiempo real y panel de pruebas rapidas. Puedes usarlo localmente o en la version publicada: https://bgabitobrodsky.github.io/velocidad-crucero-amaroki/
 
+![simulador-amaroki](https://github.com/user-attachments/assets/29c06c8c-7c30-4b41-8b92-39275d0ba051)
+
 ## Requisitos
 - Navegador moderno (Chrome, Edge, Firefox).
 - Sin dependencias locales: usa CDN para Bootstrap y Chart.js.
