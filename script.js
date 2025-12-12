@@ -40,6 +40,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const kiIndicator = document.getElementById("kiIndicator");
   const kpToggle = document.getElementById("kpToggle");
   const kiToggle = document.getElementById("kiToggle");
+  const kpSlider = document.getElementById("kpSlider");
+  const kiSlider = document.getElementById("kiSlider");
+  const kpValueLabel = document.getElementById("kpValueLabel");
+  const kiValueLabel = document.getElementById("kiValueLabel");
 
   // ---------------------------------------------------------------------------
   // Estado de la simulación
@@ -59,8 +63,8 @@ document.addEventListener("DOMContentLoaded", function () {
   // e(t) = r(t) - y(t)
   // u(t) = Kp*e(t) + Ki*integral(e(t)) (modelo PI del documento)
   // ---------------------------------------------------------------------------
-  const KP_GAIN = 0.85; // Ganancia proporcional del PI (respuesta al error instantáneo)
-  const KI_GAIN = 0.35; // Ganancia integral del PI (respuesta al error acumulado)
+  let KP_GAIN = 0.85; // Ganancia proporcional del PI (respuesta al error instantáneo)
+  let KI_GAIN = 0.35; // Ganancia integral del PI (respuesta al error acumulado)
   const CONTROL_MIN = 0; // Saturación inferior de la señal de control normalizada
   const CONTROL_MAX = 1; // Saturación superior de la señal de control normalizada
   const CONTROL_TO_SPEED_GAIN = MAX_TARGET_SPEED; // Factor que traduce control-velocidad equivalente
@@ -164,6 +168,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const MIN_Y_SPAN = 10;
   const Y_EXTRA_RATIO = 0.1;
   const ctx = document.getElementById("simulationChart").getContext("2d");
+  const errorCtx = document.getElementById("errorChart")
+    ? document.getElementById("errorChart").getContext("2d")
+    : null;
+  const MIN_ERROR_SPAN = 5;
+  const ERROR_Y_EXTRA_RATIO = 0.1;
   const perturbationMarkerPlugin = {
     id: "perturbationMarker",
     afterDraw(chart) {
@@ -260,6 +269,53 @@ document.addEventListener("DOMContentLoaded", function () {
     },
     plugins: [perturbationMarkerPlugin]
   });
+
+  const errorChart = errorCtx
+    ? new Chart(errorCtx, {
+        type: "line",
+        data: {
+          datasets: [
+            {
+              label: "Error (km/h)",
+              data: [],
+              borderColor: "#ff9800",
+              backgroundColor: "rgba(255, 152, 0, 0.15)",
+              borderWidth: 2,
+              tension: 0.2,
+              pointRadius: 0,
+              pointHoverRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: {
+              type: "linear",
+              title: {
+                display: true,
+                text: "Tiempo (s)"
+              },
+              min: 0,
+              max: WINDOW_DURATION
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Error (km/h)"
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            }
+          }
+        },
+        plugins: [perturbationMarkerPlugin]
+      })
+    : null;
 
   // Inicialización de labels
   updateSetSpeedDisplay();
@@ -374,6 +430,17 @@ document.addEventListener("DOMContentLoaded", function () {
     simulationChart.options.scales.yAct.max = 100;
     simulationChart.update();
 
+    if (errorChart) {
+      errorChart.data.datasets.forEach(ds => {
+        ds.data = [];
+      });
+      errorChart.options.scales.x.min = 0;
+      errorChart.options.scales.x.max = WINDOW_DURATION;
+      errorChart.options.scales.y.min = -MIN_ERROR_SPAN;
+      errorChart.options.scales.y.max = MIN_ERROR_SPAN;
+      errorChart.update();
+    }
+
     currentSpeedLabel.textContent = "0";
     timeLabel.textContent = "0.0";
     logPanel.textContent = "";
@@ -467,6 +534,13 @@ document.addEventListener("DOMContentLoaded", function () {
       isProportionalEnabled && Math.abs(lastProportionalTerm) > KP_ACTIVITY_THRESHOLD,
       isIntegralEnabled && Math.abs(lastIntegralTerm) > KI_ACTIVITY_THRESHOLD
     );
+  }
+
+  function refreshGainControls() {
+    if (kpSlider) kpSlider.value = KP_GAIN.toFixed(2);
+    if (kiSlider) kiSlider.value = KI_GAIN.toFixed(2);
+    if (kpValueLabel) kpValueLabel.textContent = Number(KP_GAIN).toFixed(2);
+    if (kiValueLabel) kiValueLabel.textContent = Number(KI_GAIN).toFixed(2);
   }
 
   // ---------------------------------------------------------------------------
@@ -614,6 +688,44 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     simulationChart.update("none");
+
+    if (errorChart) {
+      errorChart.data.datasets[0].data = sampleHistory.map(s => ({
+        x: s.t,
+        y: s.error
+      }));
+
+      if (testRunTotalDuration != null) {
+        errorChart.options.scales.x.min = 0;
+        errorChart.options.scales.x.max = testRunTotalDuration;
+      } else {
+        errorChart.options.scales.x.min = Math.max(0, simTime - WINDOW_DURATION);
+        errorChart.options.scales.x.max = Math.max(WINDOW_DURATION, simTime);
+      }
+
+      const errValues = sampleHistory.map(s => s.error);
+      if (errValues.length > 0) {
+        let minErr = Math.min(...errValues);
+        let maxErr = Math.max(...errValues);
+        let spanErr = maxErr - minErr;
+        if (spanErr < MIN_ERROR_SPAN) {
+          const padding = (MIN_ERROR_SPAN - spanErr) / 2;
+          minErr -= padding;
+          maxErr += padding;
+        } else {
+          const padding = spanErr * ERROR_Y_EXTRA_RATIO;
+          minErr -= padding;
+          maxErr += padding;
+        }
+        errorChart.options.scales.y.min = minErr;
+        errorChart.options.scales.y.max = maxErr;
+      } else {
+        errorChart.options.scales.y.min = -MIN_ERROR_SPAN;
+        errorChart.options.scales.y.max = MIN_ERROR_SPAN;
+      }
+
+      errorChart.update("none");
+    }
   }
 
   // Actualiza el log con los últimos 10 s (del más reciente al más antiguo)
@@ -813,6 +925,31 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  if (kpSlider) {
+    kpSlider.addEventListener("input", function () {
+      const value = Number(kpSlider.value);
+      if (!Number.isNaN(value)) {
+        KP_GAIN = value;
+        lastProportionalTerm = 0;
+        if (kpValueLabel) kpValueLabel.textContent = value.toFixed(2);
+        refreshIndicatorsFromState();
+      }
+    });
+  }
+
+  if (kiSlider) {
+    kiSlider.addEventListener("input", function () {
+      const value = Number(kiSlider.value);
+      if (!Number.isNaN(value)) {
+        KI_GAIN = value;
+        integralError = 0; // reinicia acumulador para evitar saltos abruptos
+        lastIntegralTerm = 0;
+        if (kiValueLabel) kiValueLabel.textContent = value.toFixed(2);
+        refreshIndicatorsFromState();
+      }
+    });
+  }
+
   if (increaseSpeedBtn) {
     increaseSpeedBtn.addEventListener("click", function () {
       adjustSetSpeed(SPEED_STEP);
@@ -842,6 +979,7 @@ document.addEventListener("DOMContentLoaded", function () {
   refreshPerturbationInputs();
   updateActivePerturbationPanel();
   updateSimulationToggleButton();
+  refreshGainControls();
 
   if (simulationSpeedSelect) {
     simulationSpeedSelect.addEventListener("change", function () {

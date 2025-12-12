@@ -293,7 +293,6 @@
                 <label class="form-check-label" for="kiToggle">I activo</label>
               </div>
             </div>
-
             <div class="ms-auto simulation-speed">
               <label for="simulationSpeed" class="form-label form-label-compact mb-1">
                 Velocidad de simulación
@@ -304,6 +303,43 @@
                 <option value="1">1x</option>
                 <option value="1.5">1.5x</option>
               </select>
+            </div>
+
+            <div class="w-100 d-flex flex-column flex-md-row gap-3">
+              <div class="flex-fill">
+                <label for="kpSlider" class="form-label form-label-compact mb-1">
+                  Ganancia proporcional (Kp)
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="kpSlider"
+                    min="0"
+                    max="2"
+                    step="0.01"
+                    value="0.85"
+                  />
+                  <span class="badge bg-light text-dark border" id="kpValueLabel">0.85</span>
+                </div>
+              </div>
+              <div class="flex-fill">
+                <label for="kiSlider" class="form-label form-label-compact mb-1">
+                  Ganancia integral (Ki)
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="kiSlider"
+                    min="0"
+                    max="2"
+                    step="0.01"
+                    value="0.35"
+                  />
+                  <span class="badge bg-light text-dark border" id="kiValueLabel">0.35</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -320,6 +356,11 @@
           <div class="card-body d-flex flex-column">
             <h2 class="h5 mb-3">Velocidades y log de la simulación</h2>
             <canvas id="simulationChart" height="260"></canvas>
+
+            <div class="mt-4">
+              <h3 class="h6 mb-2">Error:</h3>
+              <canvas id="errorChart" height="100"></canvas>
+            </div>
 
             <div class="mt-4">
               <h3 class="h6 mb-2">Estado del sistema</h3>
