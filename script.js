@@ -656,21 +656,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Actualiza datasets del gráfico a partir de sampleHistory
   function updateChartFromHistory() {
-    const dsRef = simulationChart.data.datasets[0];
-    const dsReal = simulationChart.data.datasets[1];
-    const dsAct = simulationChart.data.datasets[2];
-
-    dsRef.data = sampleHistory.map(s => ({ x: s.t, y: s.setSpeed }));
-    dsReal.data = sampleHistory.map(s => ({ x: s.t, y: s.actualSpeed }));
-    dsAct.data = sampleHistory.map(s => ({ x: s.t, y: s.throttlePercent ?? 0 }));
-    const dsYm = simulationChart.data.datasets.find(
-      d => d.label === "Velocidad muestreada y_m[k] (km/h)"
-    );
-    
+    const dsRef  = simulationChart.data.datasets[0]; // referencia
+    const dsReal = simulationChart.data.datasets[1]; // velocidad real
+    const dsYm   = simulationChart.data.datasets[2]; // y_m[k]
+    const dsAct  = simulationChart.data.datasets[3]; // actuador (%)
+  
+    dsRef.data = sampleHistory.map(s => ({
+      x: s.t,
+      y: s.setSpeed
+    }));
+  
+    dsReal.data = sampleHistory.map(s => ({
+      x: s.t,
+      y: s.actualSpeed
+    }));
+  
     dsYm.data = sampleHistory.map(s => ({
       x: s.t,
       y: s.ym
     }));
+  
+    dsAct.data = sampleHistory.map(s => ({
+      x: s.t,
+      y: s.throttlePercent ?? 0
+    }));
+  
+    // --- resto del código de escalas y update() queda igual ---
     
     // Ventana fija de tiempo: últimos 10 s
     const minTime = Math.max(0, simTime - WINDOW_DURATION);
