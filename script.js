@@ -158,6 +158,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const chartUpdateInterval = 0.2; // segundos entre puntos
   let lastChartUpdateTime = 0;
 
+  // ==================== ADC / Muestreo ====================
+  let ym_k = 0; // salida muestreada y_m[k]
+
+
   // Historial de muestras para últimos 20 s
   // Cada entrada: { t, setSpeed, actualSpeed, error, disturbance }
   let sampleHistory = [];
@@ -212,6 +216,16 @@ document.addEventListener("DOMContentLoaded", function () {
           tension: 0.25,
           pointRadius: 0,
           pointHoverRadius: 0
+        },
+        {
+          label: "Velocidad muestreada y_m[k] (km/h)",
+          data: [],
+          borderColor: "#0d6efd",
+          borderWidth: 2,
+          stepped: true,        // ← ESTA línea es la clave del escalón
+          pointRadius: 0,
+          fill: false,
+          yAxisID: "y"
         },
         {
           label: "Actuador (%)",
@@ -649,7 +663,15 @@ document.addEventListener("DOMContentLoaded", function () {
     dsRef.data = sampleHistory.map(s => ({ x: s.t, y: s.setSpeed }));
     dsReal.data = sampleHistory.map(s => ({ x: s.t, y: s.actualSpeed }));
     dsAct.data = sampleHistory.map(s => ({ x: s.t, y: s.throttlePercent ?? 0 }));
-
+    const dsYm = simulationChart.data.datasets.find(
+      d => d.label === "Velocidad muestreada y_m[k] (km/h)"
+    );
+    
+    dsYm.data = sampleHistory.map(s => ({
+      x: s.t,
+      y: s.ym
+    }));
+    
     // Ventana fija de tiempo: últimos 10 s
     const minTime = Math.max(0, simTime - WINDOW_DURATION);
     const maxTime = Math.max(WINDOW_DURATION, simTime);
@@ -868,6 +890,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Registrar puntos para el gráfico/log cada chartUpdateInterval
     if (simTime - lastChartUpdateTime >= chartUpdateInterval) {
+      ym_k = actualSpeed;
       lastChartUpdateTime = simTime;
 
       // Agregar nueva muestra al historial
@@ -875,6 +898,7 @@ document.addEventListener("DOMContentLoaded", function () {
         t: simTime,
         setSpeed: setSpeed,
         actualSpeed: actualSpeed,
+        ym: ym_k,
         error: error,
         disturbanceTorqueNm: currentDisturbanceTorqueNm,
         torqueCommandNm: totalTorqueNm,
