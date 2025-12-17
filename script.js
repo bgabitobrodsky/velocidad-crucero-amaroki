@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const LOAD_TORQUE_PER_KG = 0.22; // Nm que resta cada kg de carga extra
   const KP_ACTIVITY_THRESHOLD = 0.02; // Umbral para mostrar actividad del término proporcional
   const KI_ACTIVITY_THRESHOLD = 0.02; // Umbral para mostrar actividad del término integral
+  let lastError_k = 0;   // ← error discreto retenido (ZOH)
 
   const PERTURBATION_MODELS = {
     headwind: {
@@ -145,6 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let currentDisturbanceTorqueNm = 0;
   let disturbanceStartTime = 0;
   let disturbanceEndTime = 0; // tiempo simTime hasta el cual actúa
+  let isDisturbanceActive = false;
   let testRunEndTime = null;
   let testRunTotalDuration = null;
   let testRunSpeedStepTime = null;
@@ -160,6 +162,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ==================== ADC / Muestreo ====================
   let ym_k = 0; // salida muestreada y_m[k]
+  // ==================== CONTROL DISCRETO ====================
+  let u_k = 0;        // salida del controlador digital u[k]
+  let u_hold = 0;     // salida del DAC / ZOH → u(t)
+  const Ts = chartUpdateInterval; // 0.2 s
+  let lastSampleTime = 0;
+
 
 
   // Historial de muestras para últimos 20 s
@@ -228,6 +236,16 @@ document.addEventListener("DOMContentLoaded", function () {
           yAxisID: "y"
         },
         {
+          label: "u[k] – Control digital (%)",
+          data: [],
+          borderColor: "#6f42c1",
+          borderWidth: 2,
+          stepped: true,      // ← DISCRETO
+          pointRadius: 0,
+          fill: false,
+          yAxisID: "yAct"
+        },        
+        {
           label: "Actuador (%)",
           data: [],
           borderColor: "#198754",
@@ -295,6 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
               borderColor: "#ff9800",
               backgroundColor: "rgba(255, 152, 0, 0.15)",
               borderWidth: 2,
+              stepped: true,
               tension: 0.2,
               pointRadius: 0,
               pointHoverRadius: 0
@@ -423,9 +442,13 @@ document.addEventListener("DOMContentLoaded", function () {
     currentPerturbationLabel = "Sin pert.";
     disturbanceStartTime = 0;
     disturbanceEndTime = 0;
+    isDisturbanceActive = false;
     lastTimestamp = null;
     lastChartUpdateTime = 0;
-
+    lastSampleTime = 0;
+    u_k = 0;
+    u_hold = 0;
+    lastError_k = 0;
     integralError = 0;
     lastProportionalTerm = 0;
     lastIntegralTerm = 0;
@@ -482,7 +505,6 @@ document.addEventListener("DOMContentLoaded", function () {
       currentDisturbanceTorqueNm = torqueNm;
       currentPerturbationLabel = `${config.name} (${config.magnitudeFormatter(magnitude)})`;
     } else {
-      currentDisturbanceTorqueNm = 0;
       currentPerturbationLabel = "Perturbación programada";
     }
     updateActivePerturbationPanel();
@@ -515,6 +537,9 @@ document.addEventListener("DOMContentLoaded", function () {
     currentSpeedLabel.textContent = actualSpeed.toFixed(1);
     updateSpeedometer();
     const normalizedTorque = presetControlForSpeed(actualSpeed);
+    u_k = normalizedTorque;
+    u_hold = normalizedTorque;
+
     if (statusActualSpeedEl) statusActualSpeedEl.textContent = `${actualSpeed.toFixed(1)} km/h`;
     if (statusErrorEl) statusErrorEl.textContent = `${(setSpeed - actualSpeed).toFixed(1)} km/h`;
     if (statusControlEl) statusControlEl.textContent = `${(normalizedTorque * 100).toFixed(0)} %`;
@@ -659,7 +684,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const dsRef  = simulationChart.data.datasets[0]; // referencia
     const dsReal = simulationChart.data.datasets[1]; // velocidad real
     const dsYm   = simulationChart.data.datasets[2]; // y_m[k]
-    const dsAct  = simulationChart.data.datasets[3]; // actuador (%)
+    const dsUk  = simulationChart.data.datasets[3]; // u[k]
+    const dsAct = simulationChart.data.datasets[4]; // actuador
+
   
     dsRef.data = sampleHistory.map(s => ({
       x: s.t,
@@ -675,6 +702,11 @@ document.addEventListener("DOMContentLoaded", function () {
       x: s.t,
       y: s.ym
     }));
+
+    dsUk.data = sampleHistory.map(s => ({
+      x: s.t,
+      y: s.u_k ?? 0
+    }));    
   
     dsAct.data = sampleHistory.map(s => ({
       x: s.t,
@@ -796,6 +828,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const dt = (dtMs / 1000) * simSpeedMultiplier; // s escalados
 
     simTime += dt;
+    // Error continuo (visualización)
+    const error_ui = setSpeed - actualSpeed;
+
+
 
   if (
       testRunSpeedStepTime != null &&
@@ -809,18 +845,19 @@ document.addEventListener("DOMContentLoaded", function () {
     if (
       disturbanceStartTime != null &&
       simTime >= disturbanceStartTime &&
-      simTime <= disturbanceEndTime &&
-      Math.abs(currentDisturbanceTorqueNm) < 0.5
+      simTime <= disturbanceEndTime
     ) {
       const preview = updatePerturbationPreview();
       if (preview) {
-        currentDisturbanceTorqueNm = preview.torqueNm ?? currentDisturbanceTorqueNm;
+        currentDisturbanceTorqueNm = preview.torqueNm;
         currentPerturbationLabel = `${preview.config.name} (${preview.config.magnitudeFormatter(
           preview.magnitude
         )})`;
+        isDisturbanceActive = true;
         updateActivePerturbationPanel();
       }
     }
+    
     if (testRunEndTime != null && simTime >= testRunEndTime) {
       testRunEndTime = null;
       testRunTotalDuration = null;
@@ -830,55 +867,74 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Apagar perturbación cuando pasa su duración
-    if (simTime > disturbanceEndTime) {
+    if (
+      isDisturbanceActive &&
+      simTime > disturbanceEndTime
+    ) {
       currentDisturbanceTorqueNm = 0;
       currentPerturbationLabel = "Sin pert.";
+      isDisturbanceActive = false;
       updateActivePerturbationPanel();
     }
 
-    // ------ Control PI ------
-    const error = setSpeed - actualSpeed;
-    const normalizedError = normalizeError(error);
-    const proportionalTerm = computeProportionalTerm(normalizedError);
+// ---- Muestreo del controlador: u[k] ----
+if (simTime - lastSampleTime >= Ts) {
 
-    let tentativeIntegral = integralError;
-    if (isIntegralEnabled) {
-      tentativeIntegral += normalizedError * dt;
-      tentativeIntegral = clamp(tentativeIntegral, -INTEGRAL_STATE_LIMIT, INTEGRAL_STATE_LIMIT);
-    } else {
-      tentativeIntegral = 0;
-    }
+    // ADC
+  ym_k = actualSpeed;
 
-    let integralTerm = isIntegralEnabled ? KI_GAIN * tentativeIntegral : 0;
-    let controlSignal = clamp(proportionalTerm + integralTerm, CONTROL_MIN, CONTROL_MAX);
+    // Error discreto
+  const error_k = setSpeed - ym_k;
+  lastError_k = error_k;
 
-    if (isIntegralEnabled) {
-      const saturatedHigh = controlSignal >= CONTROL_MAX - 1e-3 && normalizedError > 0;
-      const saturatedLow = controlSignal <= CONTROL_MIN + 1e-3 && normalizedError < 0;
-      if (saturatedHigh || saturatedLow) {
-        tentativeIntegral = integralError;
-        integralTerm = KI_GAIN * tentativeIntegral;
-        controlSignal = clamp(proportionalTerm + integralTerm, CONTROL_MIN, CONTROL_MAX);
-      }
-    }
+  const normalizedError_k = normalizeError(error_k);
 
-    integralError = tentativeIntegral;
-    lastIntegralTerm = integralTerm;
+  // PI digital
+  const p_k = computeProportionalTerm(normalizedError_k);
+
+  if (isIntegralEnabled) {
+    integralError += normalizedError_k * Ts;
+    integralError = clamp(integralError, -INTEGRAL_STATE_LIMIT, INTEGRAL_STATE_LIMIT);
+  } else {
+    integralError = 0;
+  }
+
+  const i_k = isIntegralEnabled ? KI_GAIN * integralError : 0;
+  lastIntegralTerm = i_k;
+
+
+  u_k = clamp(p_k + i_k, CONTROL_MIN, CONTROL_MAX);
+
+  // ZOH
+  u_hold = u_k;
+
+  lastSampleTime = simTime;
+
+}
+// ---- Señal continua al actuador ----
+    let controlSignal = u_hold;
+
 
     refreshIndicatorsFromState();
 
     // ------ Dinámica simplificada de la planta ------
-    const controlTorqueNm = controlSignal * MAX_ENGINE_TORQUE;
-    const totalTorqueNm = controlTorqueNm + currentDisturbanceTorqueNm;
-    const normalizedTorque = clamp(
-      totalTorqueNm / MAX_ENGINE_TORQUE,
-      NORMALIZED_MIN_TORQUE,
-      NORMALIZED_MAX_TORQUE
-    );
-    const driveTarget = normalizedTorque * CONTROL_TO_SPEED_GAIN;
-    actualSpeed += ((driveTarget - actualSpeed) / PLANT_TIME_CONSTANT) * dt;
+    // ------ Dinámica simplificada de la planta ------
 
-    // Saturación física de velocidad
+// Señal del actuador
+  const effectiveTorque =
+    u_hold * MAX_ENGINE_TORQUE + currentDisturbanceTorqueNm;
+
+// Dinámica de primer orden
+  const effectiveDriveTarget =
+    (effectiveTorque / MAX_ENGINE_TORQUE) * CONTROL_TO_SPEED_GAIN;
+
+
+// Perturbación como carga externa
+  actualSpeed += 
+  ((effectiveDriveTarget - actualSpeed) / PLANT_TIME_CONSTANT) * dt;
+
+
+  // Saturación física de velocidad
     if (actualSpeed < 0) actualSpeed = 0;
     if (actualSpeed > maxSpeed) actualSpeed = maxSpeed;
 
@@ -890,7 +946,7 @@ document.addEventListener("DOMContentLoaded", function () {
       statusActualSpeedEl.textContent = `${actualSpeed.toFixed(1)} km/h`;
     }
     if (statusErrorEl) {
-      statusErrorEl.textContent = `${error.toFixed(1)} km/h`;
+      statusErrorEl.textContent = `${error_ui.toFixed(1)} km/h`;
     }
     if (statusControlEl) {
       statusControlEl.textContent = `${(controlSignal * 100).toFixed(0)} %`;
@@ -901,7 +957,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Registrar puntos para el gráfico/log cada chartUpdateInterval
     if (simTime - lastChartUpdateTime >= chartUpdateInterval) {
-      ym_k = actualSpeed;
       lastChartUpdateTime = simTime;
 
       // Agregar nueva muestra al historial
@@ -910,9 +965,10 @@ document.addEventListener("DOMContentLoaded", function () {
         setSpeed: setSpeed,
         actualSpeed: actualSpeed,
         ym: ym_k,
-        error: error,
+        u_k:u_hold*100,
+        error: lastError_k,
         disturbanceTorqueNm: currentDisturbanceTorqueNm,
-        torqueCommandNm: totalTorqueNm,
+        torqueCommandNm: u_hold * MAX_ENGINE_TORQUE,
         throttlePercent: controlSignal * 100,
         perturbationLabel: currentPerturbationLabel
       });
