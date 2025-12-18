@@ -803,8 +803,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const torqueText = s.torqueCommandNm != null ? formatTorqueNm(s.torqueCommandNm) : "-";
         const perturbationTorque = s.disturbanceTorqueNm != null ? formatTorqueNm(s.disturbanceTorqueNm) : "0 Nm";
         const perturbationText = s.perturbationLabel || "Sin pert.";
+        const ukText  = s.uk_discrete != null ? s.uk_discrete.toFixed(3) : "-";
+        const ymkText = s.ym != null ? s.ym.toFixed(1) : "-";
         return `${s.t.toFixed(1)}s | ref=${s.setSpeed.toFixed(1)} km/h | ` +
                `vel=${s.actualSpeed.toFixed(1)} km/h | ` +
+               `ym[k]=${ymkText} km/h | ` +
+               `u[k]=${ukText} | ` +
                `err=${s.error.toFixed(1)} km/h | ` +
                `torque=${torqueText} | ctrl=${throttleText} | ` +
                `pert=${perturbationText} (${perturbationTorque})`;
@@ -965,6 +969,7 @@ if (simTime - lastSampleTime >= Ts) {
         setSpeed: setSpeed,
         actualSpeed: actualSpeed,
         ym: ym_k,
+        uk_discrete: u_k,
         u_k:u_hold*100,
         error: lastError_k,
         disturbanceTorqueNm: currentDisturbanceTorqueNm,
